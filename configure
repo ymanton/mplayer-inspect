@@ -2541,7 +2541,7 @@ fi # if darwin && test "$cc_vendor" = "gnu" ; then
 # Checking for CFLAGS
 _install_strip="-s"
 if test "$_profile" != "" || test "$_debug" != "" ; then
-  CFLAGS="-O2 $_march $_mcpu $_pipe $_debug $_profile"
+  CFLAGS="$_pipe $_debug $_profile"
   WARNFLAGS="-W -Wall"
   _install_strip=
 elif test -z "$CFLAGS" ; then
