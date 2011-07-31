@@ -331,6 +331,9 @@ const m_option_t mplayer_opts[]={
     {"playing-msg", &playing_msg, CONF_TYPE_STRING, 0, 0, 0, NULL},
 
     {"slave", &slave_mode, CONF_TYPE_FLAG,CONF_GLOBAL , 0, 1, NULL},
+    {"start-paused", &start_paused, CONF_TYPE_FLAG,CONF_GLOBAL , 0, 1, NULL},
+    {"dump-slices", &dump_slices, CONF_TYPE_FLAG,CONF_GLOBAL , 0, 1, NULL},
+    {"dump-pic-params", &dump_pic_params, CONF_TYPE_FLAG,CONF_GLOBAL , 0, 1, NULL},
     {"idle", &player_idle_mode, CONF_TYPE_FLAG,CONF_GLOBAL , 0, 1, NULL},
     {"noidle", &player_idle_mode, CONF_TYPE_FLAG,CONF_GLOBAL , 1, 0, NULL},
     {"use-stdin", "-use-stdin has been renamed to -noconsolecontrols, use that instead.", CONF_TYPE_PRINT, 0, 0, 0, NULL},

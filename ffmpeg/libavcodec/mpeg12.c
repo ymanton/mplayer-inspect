@@ -38,6 +38,8 @@
 #include "vdpau_internal.h"
 #include "xvmc_internal.h"
 
+#include <input/input.h>
+
 //#undef NDEBUG
 //#include <assert.h>
 
@@ -131,6 +133,25 @@ void ff_mpeg1_clean_buffers(MpegEncContext *s){
     s->last_dc[1] = s->last_dc[0];
     s->last_dc[2] = s->last_dc[0];
     memset(s->last_mv, 0, sizeof(s->last_mv));
+}
+
+static void do_step(AVCodecContext *avctx)
+{
+    mp_cmd_t* cmd;
+    av_log(avctx, AV_LOG_INFO, "%s\n", avctx->step == 1 ? "slice_step" : "pic_step");
+    while (!(cmd = mp_input_get_cmd(20, 0, 0)));
+    //XXX: Call run_command here?
+    switch (cmd->id){
+        case MP_CMD_SLICE_STEP:
+            avctx->step = 1;
+            break;
+        case MP_CMD_PICTURE_STEP:
+            avctx->step = 2;
+            break;
+        default:
+            avctx->step = 0;
+    }
+    mp_cmd_free(cmd);
 }
 
 
@@ -1179,6 +1200,77 @@ typedef struct Mpeg1Context {
     AVRational frame_rate_ext;       ///< MPEG-2 specific framerate modificator
     int sync;                        ///< Did we reach a sync point like a GOP/SEQ/KEYFrame?
 } Mpeg1Context;
+
+static void dump_slices(AVCodecContext *avctx, const char *buf_ptr, int input_size, int slice_count)
+{
+    int num_ints = input_size / 4;
+    int num_bytes = input_size % 4;
+    av_log(avctx, AV_LOG_INFO, "Dumping %d slices (%d words, %d bytes):\n", slice_count, num_ints, num_bytes);
+    for (int i = 0; i < num_ints; ++i, buf_ptr += sizeof(int)){
+        av_log(avctx, AV_LOG_INFO, "%08x\n", *(int*)buf_ptr);
+    }
+    for (int i = 0; i < num_bytes; ++i, buf_ptr += sizeof(char)){
+        av_log(avctx, AV_LOG_INFO, "%02x\n", *(unsigned char*)buf_ptr);
+    }
+    av_log(avctx, AV_LOG_INFO, "Dumped %d slices (%d words, %d bytes):\n", slice_count, num_ints, num_bytes);
+}
+
+static void dump_pic_params(AVCodecContext *avctx)
+{
+    Mpeg1Context *s = avctx->priv_data;
+    int i, j;
+
+    /*
+     VdpVideoSurface    forward_reference
+     VdpVideoSurface    backward_reference
+     uint32_t  slice_count
+     uint8_t   picture_structure
+     uint8_t   picture_coding_type
+     uint8_t   intra_dc_precision
+     uint8_t   frame_pred_frame_dct
+     uint8_t   concealment_motion_vectors
+     uint8_t   intra_vlc_format
+     uint8_t   alternate_scan
+     uint8_t   q_scale_type
+     uint8_t   top_field_first
+     uint8_t   full_pel_forward_vector
+     uint8_t   full_pel_backward_vector
+     uint8_t   f_code [2][2]
+     uint8_t   intra_quantizer_matrix [64]
+     uint8_t   non_intra_quantizer_matrix [64]
+     */
+    av_log(avctx, AV_LOG_INFO, "slice_count=%d\n", s->slice_count);
+    av_log(avctx, AV_LOG_INFO, "picture_structure=%x\n", s->mpeg_enc_ctx.picture_structure);
+    av_log(avctx, AV_LOG_INFO, "picture_coding_type=%x\n", s->mpeg_enc_ctx.pict_type);
+    av_log(avctx, AV_LOG_INFO, "intra_dc_precision=%x\n", s->mpeg_enc_ctx.intra_dc_precision);
+    av_log(avctx, AV_LOG_INFO, "frame_pred_frame_dct=%x\n", s->mpeg_enc_ctx.frame_pred_frame_dct);
+    av_log(avctx, AV_LOG_INFO, "concealment_motion_vectors=%x\n", s->mpeg_enc_ctx.concealment_motion_vectors);
+    av_log(avctx, AV_LOG_INFO, "intra_vlc_format=%x\n", s->mpeg_enc_ctx.intra_vlc_format);
+    av_log(avctx, AV_LOG_INFO, "alternate_scan=%x\n", s->mpeg_enc_ctx.alternate_scan);
+    av_log(avctx, AV_LOG_INFO, "q_scale_type=%x\n", s->mpeg_enc_ctx.q_scale_type);
+    av_log(avctx, AV_LOG_INFO, "top_field_first=%x\n", s->mpeg_enc_ctx.top_field_first);
+    av_log(avctx, AV_LOG_INFO, "full_pel_forward_vector=%x\n", s->mpeg_enc_ctx.full_pel[0]);
+    av_log(avctx, AV_LOG_INFO, "full_pel_backward_vector=%x\n", s->mpeg_enc_ctx.full_pel[1]);
+    av_log(avctx, AV_LOG_INFO, "f_code={{%x,%x},{%x,%x}}\n",
+           s->mpeg_enc_ctx.mpeg_f_code[0][0],
+           s->mpeg_enc_ctx.mpeg_f_code[0][1],
+           s->mpeg_enc_ctx.mpeg_f_code[1][0],
+           s->mpeg_enc_ctx.mpeg_f_code[1][1]);
+
+    av_log(avctx, AV_LOG_INFO, "intra_quantizer_matrix={\n");
+    for (i = 0; i < 8; ++i){
+        for (j = 0; j < 8; ++j)
+            av_log(avctx, AV_LOG_INFO, "%x, ", s->mpeg_enc_ctx.intra_matrix[i * 8 + j]);
+        av_log(avctx, AV_LOG_INFO, "\n");
+    }
+
+    av_log(avctx, AV_LOG_INFO, "non_intra_quantizer_matri={\n");
+    for (i = 0; i < 8; ++i){
+        for (j = 0; j < 8; ++j)
+            av_log(avctx, AV_LOG_INFO, "%x, ", s->mpeg_enc_ctx.inter_matrix[i * 8 + j]);
+        av_log(avctx, AV_LOG_INFO, "\n");
+    }
+}
 
 static av_cold int mpeg_decode_init(AVCodecContext *avctx)
 {
@@ -2300,14 +2392,26 @@ static int decode_chunks(AVCodecContext *avctx,
                         s2->error_count += s2->thread_context[i]->error_count;
                 }
 
-                if (CONFIG_MPEG_VDPAU_DECODER && avctx->codec->capabilities&CODEC_CAP_HWACCEL_VDPAU)
+                if (CONFIG_MPEG_VDPAU_DECODER && avctx->codec->capabilities&CODEC_CAP_HWACCEL_VDPAU){
+                    if (avctx->dump & 1)
+                        dump_slices(avctx, buf, buf_size, s->slice_count);
+
                     ff_vdpau_mpeg_picture_complete(s2, buf, buf_size, s->slice_count);
+                }
 
                 if (slice_end(avctx, picture)) {
                     if(s2->last_picture_ptr || s2->low_delay) //FIXME merge with the stuff in mpeg_decode_slice
                         *data_size = sizeof(AVPicture);
                 }
             }
+
+            if (avctx->dump & 2)
+                dump_pic_params(avctx);
+
+            // Check for pic_step
+            if (avctx->step == 2)
+                do_step(avctx);
+
             s2->pict_type= 0;
             return FFMAX(0, buf_ptr - buf - s2->parse_context.last_index);
         }
@@ -2451,6 +2555,9 @@ static int decode_chunks(AVCodecContext *avctx,
 
                 if (avctx->codec->capabilities&CODEC_CAP_HWACCEL_VDPAU) {
                     s->slice_count++;
+                    // Check for slice_step
+                    if (avctx->step == 1)
+                        do_step(avctx);
                     break;
                 }
 
@@ -2470,6 +2577,9 @@ static int decode_chunks(AVCodecContext *avctx,
                     }
                     buf_ptr += 2; //FIXME add minimum number of bytes per slice
                 }else{
+                    if (avctx->dump & 1)
+                        dump_slices(avctx, buf_ptr, input_size, 1);
+
                     ret = mpeg_decode_slice(s, mb_y, &buf_ptr, input_size);
                     emms_c();
 
@@ -2479,6 +2589,10 @@ static int decode_chunks(AVCodecContext *avctx,
                     }else{
                         ff_er_add_slice(s2, s2->resync_mb_x, s2->resync_mb_y, s2->mb_x-1, s2->mb_y, AC_END|DC_END|MV_END);
                     }
+
+                    // Check for slice_step
+                    if (avctx->step == 1)
+                       do_step(avctx);
                 }
             }
             break;

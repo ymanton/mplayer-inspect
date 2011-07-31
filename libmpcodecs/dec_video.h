@@ -41,6 +41,9 @@ int set_rectangle(sh_video_t *sh_video, int param, int value);
 void resync_video_stream(sh_video_t *sh_video);
 int get_current_video_decoder_lag(sh_video_t *sh_video);
 
+int set_video_step(sh_video_t *sh_video, int step);
+int set_video_dump(sh_video_t *sh_video, int dump);
+
 extern int divx_quality;
 
 #endif /* MPLAYER_DEC_VIDEO_H */

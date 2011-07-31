@@ -142,6 +142,9 @@
 
 
 int slave_mode=0;
+int start_paused=0;
+int dump_slices = 0;
+int dump_pic_params = 0;
 int player_idle_mode=0;
 int quiet=0;
 int enable_mouse_movements=0;
@@ -3647,6 +3650,30 @@ if (mpctx->stream->type == STREAMTYPE_DVDNAV) {
     mp_dvdnav_cell_has_changed(mpctx->stream,1);
 }
 #endif
+
+if (slave_mode && start_paused) {
+    mp_cmd_t* cmd;
+    int unpause = 0;
+    int id;
+    //start_paused = 0;
+    while (!unpause) {
+    while (!(cmd = mp_input_get_cmd(20, 0, 0)));
+    unpause = (cmd->id == MP_CMD_PAUSE || cmd->id == MP_CMD_SLICE_STEP || cmd->id == MP_CMD_PICTURE_STEP);
+    id = cmd->id;
+    mp_cmd_free(cmd);
+    }
+    if (id == MP_CMD_SLICE_STEP)
+        set_video_step(mpctx->sh_video, 1);
+    else if (id == MP_CMD_PICTURE_STEP)
+        set_video_step(mpctx->sh_video, 2);
+}
+
+if (dump_slices || dump_pic_params) {
+    int dump = 0;
+    if (dump_slices) dump |= 1;
+    if (dump_pic_params) dump |= 2;
+    set_video_dump(mpctx->sh_video, dump);
+}
 
 while(!mpctx->eof){
     float aq_sleep_time=0;

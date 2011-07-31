@@ -2789,6 +2789,9 @@ typedef struct AVCodecContext {
      */
     int lpc_passes;
 
+    int step;
+    int dump;
+
     /**
      * Number of slices.
      * Indicates number of picture subdivisions. Used for parallelized

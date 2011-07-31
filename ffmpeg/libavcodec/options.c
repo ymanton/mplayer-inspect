@@ -471,6 +471,9 @@ void avcodec_get_context_defaults2(AVCodecContext *s, enum AVMediaType codec_typ
     s->palctrl = NULL;
     s->reget_buffer= avcodec_default_reget_buffer;
     s->reordered_opaque= AV_NOPTS_VALUE;
+
+    s->step = 0;
+    s->dump = 0;
 }
 
 int avcodec_get_context_defaults3(AVCodecContext *s, AVCodec *codec){

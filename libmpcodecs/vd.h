@@ -59,6 +59,8 @@ extern const m_option_t xvid_dec_opts[];
 #define VDCTRL_GET_EQUALIZER 7 /* get color options (brightness,contrast etc) */
 #define VDCTRL_RESYNC_STREAM 8 /* seeking */
 #define VDCTRL_QUERY_UNSEEN_FRAMES 9 /* current decoder lag */
+#define VDCTRL_STEP 100
+#define VDCTRL_DUMP 101
 
 // callbacks:
 int mpcodecs_config_vo(sh_video_t *sh, int w, int h, unsigned int preferred_outfmt);

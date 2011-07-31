@@ -174,6 +174,12 @@ static int control(sh_video_t *sh, int cmd, void *arg, ...){
         return CONTROL_TRUE;
     case VDCTRL_QUERY_UNSEEN_FRAMES:
         return avctx->has_b_frames + 10;
+    case VDCTRL_STEP:
+        avctx->step = *(int*)arg;
+        return CONTROL_TRUE;
+    case VDCTRL_DUMP:
+        avctx->dump = *(int*)arg;
+        return CONTROL_TRUE;
     }
     return CONTROL_UNKNOWN;
 }

@@ -170,6 +170,21 @@ int get_current_video_decoder_lag(sh_video_t *sh_video)
     return -1;
 }
 
+int set_video_step(sh_video_t *sh_video, int step)
+{
+    if (mpvdec && (step == 1 || step == 2)) {
+        mpvdec->control(sh_video, VDCTRL_STEP, &step);
+    }
+}
+
+int set_video_dump(sh_video_t *sh_video, int dump)
+{
+    if (mpvdec) {
+        dump &= 3;
+        mpvdec->control(sh_video, VDCTRL_DUMP, &dump);
+    }
+}
+
 void uninit_video(sh_video_t *sh_video)
 {
     if (!sh_video->initialized)

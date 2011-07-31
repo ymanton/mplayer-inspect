@@ -2763,6 +2763,15 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
                             playback_speed);
             } break;
 
+        case MP_CMD_SLICE_STEP:
+            set_video_step(mpctx->sh_video, 1);
+            brk_cmd = 1;
+            break;
+        case MP_CMD_PICTURE_STEP:
+            set_video_step(mpctx->sh_video, 2);
+            brk_cmd = 1;
+            break;
+
         case MP_CMD_FRAME_STEP:
         case MP_CMD_PAUSE:
             cmd->pausing = 1;
